@@ -3,7 +3,6 @@
 import argparse
 import cv2
 import numpy as np
-from skimage.exposure import rescale_intensity
 
 
 def define_args():
@@ -30,31 +29,56 @@ def convolution(img, kernel):
     This function executes the convolution between `img` and `kernel`.
     Note: `None` indicates that there is content yet to complete.
     """
-    # Display the image.
+    # Load/display the image.
     image = cv2.imread(img)
-    cv2.imshow('Input image', image)
     # Get size of image and kernel.
-    (image_h, image_w) = image.shape[:2]
-    (kernel_h, kernel_w) = kernel.shape[:2]
+    (image_h, image_w) = image.shape[:2] # 3rd value is colour space
+    (kernel_h, kernel_w) = kernel.shape[:2] # 3rd value is colour space
     (pad_h, pad_w) = (kernel_h // 2, kernel_w // 2)
     # Create image to write to.
     output = np.zeros(image.shape)
     # Slide kernel across every pixel.
     for y in range(pad_h, image_h-pad_h):
         for x in range(pad_w, image_w-pad_w):
-            for colour in range(3):
+            # If coloured, loop for colours.
+            for colour in range(image.shape[2]):
                 # Get center pixel.
                 center = image[y - pad_h:y + pad_h + 1,
                                x - pad_w:x + pad_w + 1,
                                colour]
-                # Perform convolution.
-                conv = (center * kernel).sum()
+                # Perform convolution and map value to [0, 255].
                 # Write back value to output image.
-                output[y, x, colour] = conv
+                output[y, x, colour] = (center * kernel).sum()/255
 
     # Return the result of the convolution.
-    output = rescale_intensity(output, in_range=(0, 255))
-    output = (output * 255).astype("uint8")
+    return output
+
+
+def fourier(img, kernel):
+    # Load/display the image.
+    image = cv2.imread(img)
+    cv2.imshow('Input image', image)
+    # Get size of image and kernel.
+    (image_h, image_w) = image.shape[:2]
+    (kernel_h, kernel_w) = kernel.shape[:2]
+    # Apply padding to the kernel.
+    padded_kernel = cv2.copyMakeBorder(kernel,
+                                       top=(int)(image_h-kernel_h)//2+1,
+                                       bottom=(image_h-kernel_h)//2,
+                                       left=(image_w-kernel_w)//2,
+                                       right=(image_w-kernel_w)//2,
+                                       borderType=cv2.BORDER_CONSTANT,
+                                       value=[0,0,0])
+    # Create image to write to.
+    output = np.zeros(image.shape)
+    # Run FFT on all 3 channels.
+    for colour in range(3):
+        Fi = np.fft.fft2(image[:,:,colour])
+        Fk = np.fft.fft2(padded_kernel)
+        # Inverse fourier.
+        output[:,:,colour] = np.fft.ifft2(Fi * Fk)/255
+
+    # Return the result of convolution.
     return output
 
 
@@ -73,28 +97,42 @@ def construct_kernels(size):
     return kernels
 
 
-def low_pass(image):
-    """ Perform LPF.
+def gaussian_blur(image, sigma, high):
+    """ Constructs a Gaussian kernel.
 
-    Returns low pass version of the input `image`.
+    Builds a Gaussian kernels based on the dimentions passed when the
+    program is run. This is used to perform the LPF on an image.
     """
-    # Perform convolution with bluring kernel.
-    img = convolution(image, blur)
-    # Return result.
-    return img
+    # Calculate size of filter.
+    size = 8 * sigma + 1
+    if not size % 2:
+        size = size + 1
+
+    center = size//2
+    kernel = np.zeros((size, size))
+
+    # Generate Gaussian blur.
+    for y in range(size):
+        for x in range(size):
+            diff = np.sqrt((y-center) ** 2
+                           + (x - center) ** 2)
+            kernel[y,x] = np.exp(-(diff ** 2)
+                                 / (2 * sigma ** 2))
+
+    kernel = kernel / np.sum(kernel)
+
+    if high:
+        return (cv2.imread(image)/255) - convolution(image, kernel)
+    else:
+        return convolution(image, kernel)
 
 
-def high_pass(image):
-    """ Perform HPF.
-
-    Returns low pass version of the input `image`.
-    """
-    # Compute low pass of image.
-    img = low_pass(image)
-    # Subtract from starting image.
-    img = image - img
-    # Return result.
-    return img
+def hybrid_image(image, cutoff):
+    low = gaussian_blur(image[0], cutoff[0], 0)
+    cv2.imshow('low', low)
+    high = gaussian_blur(image[1], cutoff[1], 1)
+    cv2.imshow('high', high)
+    return low + high
 
 
 def output_vis(image):
@@ -117,15 +155,20 @@ def main():
     """
     # Get arguments.
     args = define_args()
+
     # Split kernel size.
     (kW, kH) = tuple(map(int, args["kernel"].split('x')))
+
     # Run convolution.
     images = args["image"]
-    # Create kernels.
-    kernels = construct_kernels((kW, kH))
-    # Show convolution result.
-    cv2.imshow('Result of convolution',
-               convolution(images[0], kernels["smallBlur"]))
+
+    hybrid = hybrid_image(images, (4, 5))
+
+    cv2.imshow('Hybrid', hybrid[20:-20,20:-20])
+    print(hybrid.shape)
+
+    # cv2.imshow('Result of Fourier convolution',
+    #            fourier(images[0], kernels["smallBlur"]))
     # Hold image on display.
     cv2.waitKey(0)
     cv2.destroyAllWindows()
