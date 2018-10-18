@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-# Install requirements: pip install -r requirements.txt
-# python3 hybrid.py \
-#   -i data/dog.bmp data/cat.bmp \
-#   -c 4 4 \
-#   -o hybrid.bmp \
-#   -v visual.bmp
+# pip install -r requirements.txt
+# ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg
 
 import argparse
 import cv2
@@ -56,7 +52,7 @@ def convolution(img, kernel):
                                colour]
                 # Perform convolution and map value to [0, 255].
                 # Write back value to output image.
-                output[y, x, colour] = (center * kernel).sum()/255
+                output[y, x, colour] = (center * kernel).sum() / 255
 
     # Return the result of the convolution.
     return output
@@ -69,13 +65,11 @@ def fourier(img, kernel):
     (image_h, image_w) = image.shape[:2]
     (kernel_h, kernel_w) = kernel.shape[:2]
     # Apply padding to the kernel.
-    padded_kernel = cv2.copyMakeBorder(kernel,
-                                       top=(int)(image_h-kernel_h)//2,
-                                       bottom=(image_h-kernel_h)//2,
-                                       left=(image_w-kernel_w)//2+1,
-                                       right=(image_w-kernel_w)//2,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=[0, 0, 0])
+    padded_kernel = np.zeros(image.shape[:2])
+    start_h = (image_h - kernel_h) // 2
+    start_w = (image_w - kernel_w) // 2
+    padded_kernel[start_h:start_h + kernel_h,
+                  start_w:start_w + kernel_w] = kernel
     # Create image to write to.
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
@@ -116,14 +110,13 @@ def gaussian_blur(image, sigma):
     # Generate Gaussian blur.
     for y in range(size):
         for x in range(size):
-            diff = np.sqrt((y-center) ** 2
-                           + (x - center) ** 2)
-            kernel[y, x] = np.exp(-(diff ** 2)
-                                  / (2 * sigma ** 2))
+            diff = np.sqrt((y-center) ** 2 + (x - center) ** 2)
+            kernel[y, x] = np.exp(-(diff ** 2) / (2 * sigma ** 2))
 
     kernel = kernel / np.sum(kernel)
 
-    return convolution(image, kernel)
+    # return convolution(image, kernel)
+    return fourier(image, kernel)
 
 
 def low_pass(image, cutoff):
@@ -148,10 +141,10 @@ def hybrid_image(image, cutoff):
     print("Creating hybrid image...")
     # Perform low pass filter and export.
     low = low_pass(image[0], cutoff[0])
-    cv2.imwrite('low.bmp', low * 255)
+    cv2.imwrite('low.jpg', low * 255)
     # Perform high pass filter and export.
     high = high_pass(image[1], cutoff[1])
-    cv2.imwrite('high.bmp', (high + 0.5) * 255)
+    cv2.imwrite('high.jpg', (high + 0.5) * 255)
     # Return hybrid image.
     return low + high
 
@@ -181,8 +174,7 @@ def output_vis(image):
     current_x = 0
     for img in image_list:
         stack[max_height-img.shape[0]:,
-              current_x:img.shape[1] + current_x,
-              :] = img
+              current_x:img.shape[1] + current_x, :] = img
         current_x += img.shape[1] + gap
 
     # Return the result.
