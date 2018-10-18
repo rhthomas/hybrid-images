@@ -6,34 +6,33 @@ import numpy as np
 
 
 def define_args():
-    """ Define arguments.
-
-    Defines the arguments required to run the program. Call first in main().
+    """ Defines the arguments required to run the program.
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--image", nargs=2, required=True,
-                    help="Path to input images (2 required).")
-    ap.add_argument("-k", "--kernel", required=True,
-                    help="Kernal size, e.g. 5x7.")
+                    help="Path to input images.")
+    ap.add_argument("-k", "--kernel", nargs=2, type=int,
+                    help="Kernal size, e.g. 5 7.")
+    ap.add_argument("-c", "--cutoff", nargs=2, type=int, required=False,
+                    help="Gaussian cutoff frequencies, e.g. 5 5.")
     ap.add_argument("-o", "--output", required=True,
                     help="Path to output image file.")
     ap.add_argument("-v", "--visual", required=False,
                     help="Path to output visualisation file.")
+
     # Return arguments.
     return vars(ap.parse_args())
 
 
 def convolution(img, kernel):
-    """ Run convolution.
-
-    This function executes the convolution between `img` and `kernel`.
+    """ This function executes the convolution between `img` and `kernel`.
     Note: `None` indicates that there is content yet to complete.
     """
-    # Load/display the image.
+    # Load the image.
     image = cv2.imread(img)
-    # Get size of image and kernel.
-    (image_h, image_w) = image.shape[:2] # 3rd value is colour space
-    (kernel_h, kernel_w) = kernel.shape[:2] # 3rd value is colour space
+    # Get size of image and kernel. 3rd value of shape is colour channel.
+    (image_h, image_w) = image.shape[:2]
+    (kernel_h, kernel_w) = kernel.shape[:2]
     (pad_h, pad_w) = (kernel_h // 2, kernel_w // 2)
     # Create image to write to.
     output = np.zeros(image.shape)
@@ -55,53 +54,46 @@ def convolution(img, kernel):
 
 
 def fourier(img, kernel):
-    # Load/display the image.
+    # Load the image.
     image = cv2.imread(img)
-    cv2.imshow('Input image', image)
     # Get size of image and kernel.
     (image_h, image_w) = image.shape[:2]
     (kernel_h, kernel_w) = kernel.shape[:2]
     # Apply padding to the kernel.
     padded_kernel = cv2.copyMakeBorder(kernel,
-                                       top=(int)(image_h-kernel_h)//2+1,
+                                       top=(int)(image_h-kernel_h)//2,
                                        bottom=(image_h-kernel_h)//2,
-                                       left=(image_w-kernel_w)//2,
+                                       left=(image_w-kernel_w)//2+1,
                                        right=(image_w-kernel_w)//2,
                                        borderType=cv2.BORDER_CONSTANT,
-                                       value=[0,0,0])
+                                       value=[0, 0, 0])
     # Create image to write to.
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
     for colour in range(3):
-        Fi = np.fft.fft2(image[:,:,colour])
+        Fi = np.fft.fft2(image[:, :, colour])
         Fk = np.fft.fft2(padded_kernel)
         # Inverse fourier.
-        output[:,:,colour] = np.fft.ifft2(Fi * Fk)/255
+        output[:, :, colour] = np.fft.ifft2(Fi * Fk)/255
 
     # Return the result of convolution.
     return output
 
 
 def construct_kernels(size):
-    """ Build kernels.
-
-    Builds a dictionary of kernels based on the dimentions passed when the
+    """ Builds a dictionary of kernels based on the dimentions passed when the
     program is run. Kernels are determines by the `size` argument, which is a
     tuple from the program arguments.
     """
     kernels = {
-        "smallBlur" : np.ones(size, dtype="float")
-                              * (1.0 / (size[0] * size[1]))
+        "smallBlur": np.ones(size, dtype="float") * (1.0 / (size[0] * size[1]))
     }
     # Return kernel dictionary.
     return kernels
 
 
 def gaussian_blur(image, sigma, high):
-    """ Constructs a Gaussian kernel.
-
-    Builds a Gaussian kernels based on the dimentions passed when the
-    program is run. This is used to perform the LPF on an image.
+    """ Builds a Gaussian kernel used to perform the LPF on an image.
     """
     # Calculate size of filter.
     size = 8 * sigma + 1
@@ -116,8 +108,8 @@ def gaussian_blur(image, sigma, high):
         for x in range(size):
             diff = np.sqrt((y-center) ** 2
                            + (x - center) ** 2)
-            kernel[y,x] = np.exp(-(diff ** 2)
-                                 / (2 * sigma ** 2))
+            kernel[y, x] = np.exp(-(diff ** 2)
+                                  / (2 * sigma ** 2))
 
     kernel = kernel / np.sum(kernel)
 
@@ -128,47 +120,50 @@ def gaussian_blur(image, sigma, high):
 
 
 def hybrid_image(image, cutoff):
+    # TODO Image writes.
+    # Perform low pass filter
     low = gaussian_blur(image[0], cutoff[0], 0)
     cv2.imshow('low', low)
+
+    # Perform high pass filter
     high = gaussian_blur(image[1], cutoff[1], 1)
     cv2.imshow('high', high)
+
+    # Return hybrid image.
     return low + high
 
 
 def output_vis(image):
-    """ Produce visualisation.
-
-    Display hybrid image comparison for report. Visualisation shows 5 images
+    """ Display hybrid image comparison for report. Visualisation shows 5 images
     reducing in size to simulate viewing the image from a distance.
     """
+    for n in range(1, 5):
+        None
+        # Half the image each time.
 
     # Return the output visualisation.
     return output
 
 
 def main():
-    """ Main function.
-
-    This is the main function. Here the image is loaded into an array, along
-    with the kernel size argument, the convolution is performed and the
-    resulting image is displayed.
+    """ Main function handles execution of algorithms.
     """
     # Get arguments.
     args = define_args()
-
-    # Split kernel size.
-    (kW, kH) = tuple(map(int, args["kernel"].split('x')))
-
-    # Run convolution.
     images = args["image"]
 
-    hybrid = hybrid_image(images, (4, 5))
+    # Decide which algorithm to run.
+    if args["kernel"] is not None:
+        kSize = args["kernel"]
+        # TODO Run a general algorithm.
+    elif args["cutoff"] is not None:
+        cutoff = args["cutoff"]
+        hybrid = hybrid_image(images, cutoff)[4 * max(cutoff):-4 * max(cutoff),
+                                              4 * max(cutoff):-4 * max(cutoff)]
+        cv2.imshow('Hybrid', hybrid)
+    else:
+        print("No operation defined")
 
-    cv2.imshow('Hybrid', hybrid[20:-20,20:-20])
-    print(hybrid.shape)
-
-    # cv2.imshow('Result of Fourier convolution',
-    #            fourier(images[0], kernels["smallBlur"]))
     # Hold image on display.
     cv2.waitKey(0)
     cv2.destroyAllWindows()
