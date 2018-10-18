@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
+# Install requirements: pip install -r requirements.txt
+# python3 hybrid.py \
+#   -i data/dog.bmp data/cat.bmp \
+#   -c 4 4 \
+#   -o hybrid.bmp \
+#   -v visual.bmp
 
 import argparse
 import cv2
 import numpy as np
+import os
 
 
 def define_args():
@@ -12,12 +19,13 @@ def define_args():
     ap.add_argument("-i", "--image", nargs=2, required=True,
                     help="Path to input images.")
     ap.add_argument("-k", "--kernel", nargs=2, type=int,
-                    help="Kernal size, e.g. 5 7.")
-    ap.add_argument("-c", "--cutoff", nargs=2, type=int, required=False,
+                    help="Kernal size, e.g. 5 7. Note: first image in list will\
+                    be used.")
+    ap.add_argument("-c", "--cutoff", nargs=2, type=int,
                     help="Gaussian cutoff frequencies, e.g. 5 5.")
     ap.add_argument("-o", "--output", required=True,
                     help="Path to output image file.")
-    ap.add_argument("-v", "--visual", required=False,
+    ap.add_argument("-v", "--visual", required=True,
                     help="Path to output visualisation file.")
 
     # Return arguments.
@@ -28,6 +36,7 @@ def convolution(img, kernel):
     """ This function executes the convolution between `img` and `kernel`.
     Note: `None` indicates that there is content yet to complete.
     """
+    print("[" + img + "]\tRunning convolution...\n")
     # Load the image.
     image = cv2.imread(img)
     # Get size of image and kernel. 3rd value of shape is colour channel.
@@ -92,9 +101,10 @@ def construct_kernels(size):
     return kernels
 
 
-def gaussian_blur(image, sigma, high):
+def gaussian_blur(image, sigma):
     """ Builds a Gaussian kernel used to perform the LPF on an image.
     """
+    print("[" + image + "]\tCalculating Gaussian kernel...")
     # Calculate size of filter.
     size = 8 * sigma + 1
     if not size % 2:
@@ -113,22 +123,35 @@ def gaussian_blur(image, sigma, high):
 
     kernel = kernel / np.sum(kernel)
 
-    if high:
-        return (cv2.imread(image)/255) - convolution(image, kernel)
-    else:
-        return convolution(image, kernel)
+    return convolution(image, kernel)
+
+
+def low_pass(image, cutoff):
+    """ Generate low pass filter of image.
+    """
+    print("[" + image + "]\tGenerating low pass image...")
+    return gaussian_blur(image, cutoff)
+
+
+def high_pass(image, cutoff):
+    """ Generate high pass filter of image. This is simply the image minus its
+    low passed result.
+    """
+    print("[" + image + "]\tGenerating high pass image...")
+    return (cv2.imread(image)/255) - low_pass(image, cutoff)
 
 
 def hybrid_image(image, cutoff):
-    # TODO Image writes.
-    # Perform low pass filter
-    low = gaussian_blur(image[0], cutoff[0], 0)
-    cv2.imshow('low', low)
-
-    # Perform high pass filter
-    high = gaussian_blur(image[1], cutoff[1], 1)
-    cv2.imshow('high', high)
-
+    """ Create a hybrid image by summing together the low and high freqency
+    images.
+    """
+    print("Creating hybrid image...")
+    # Perform low pass filter and export.
+    low = low_pass(image[0], cutoff[0])
+    cv2.imwrite('low.bmp', low * 255)
+    # Perform high pass filter and export.
+    high = high_pass(image[1], cutoff[1])
+    cv2.imwrite('high.bmp', (high + 0.5) * 255)
     # Return hybrid image.
     return low + high
 
@@ -137,12 +160,33 @@ def output_vis(image):
     """ Display hybrid image comparison for report. Visualisation shows 5 images
     reducing in size to simulate viewing the image from a distance.
     """
-    for n in range(1, 5):
-        None
-        # Half the image each time.
+    print("Creating visualisation...")
+    # Local variables.
+    num = 5  # Number of images to display.
+    gap = 2  # Gap between images (px).
 
-    # Return the output visualisation.
-    return output
+    # Create list of images
+    image_list = [image]
+    max_height = image.shape[0]
+    max_width = image.shape[1]
+    # Add images to list and increase max width.
+    for i in range(1, num):
+        tmp = cv2.resize(image, (0, 0), fx=0.5 / i, fy=0.5 / i)
+        max_width += tmp.shape[1] + gap
+        image_list.append(tmp)
+
+    # Create space for image stack.
+    stack = np.ones((max_height, max_width, 3)) * 255
+    # Add images to stack.
+    current_x = 0
+    for img in image_list:
+        stack[max_height-img.shape[0]:,
+              current_x:img.shape[1] + current_x,
+              :] = img
+        current_x += img.shape[1] + gap
+
+    # Return the result.
+    return stack
 
 
 def main():
@@ -160,13 +204,15 @@ def main():
         cutoff = args["cutoff"]
         hybrid = hybrid_image(images, cutoff)[4 * max(cutoff):-4 * max(cutoff),
                                               4 * max(cutoff):-4 * max(cutoff)]
-        cv2.imshow('Hybrid', hybrid)
+
+        # Save resulting images.
+        cv2.imwrite(args["output"], hybrid * 255)
+        cv2.imwrite(args["visual"], output_vis(hybrid) * 255)
     else:
         print("No operation defined")
+        exit()
 
-    # Hold image on display.
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    print("Done.")
 
 
 # Call the main function.
