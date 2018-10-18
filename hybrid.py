@@ -3,6 +3,7 @@
 import argparse
 import cv2
 import numpy as np
+from skimage.exposure import rescale_intensity
 
 
 def define_args():
@@ -29,7 +30,8 @@ def convolution(img, kernel):
     This function executes the convolution between `img` and `kernel`.
     Note: `None` indicates that there is content yet to complete.
     """
-    image = cv2.imread(img, 0)
+    # Display the image.
+    image = cv2.imread(img)
     cv2.imshow('Input image', image)
     # Get size of image and kernel.
     (image_h, image_w) = image.shape[:2]
@@ -40,14 +42,19 @@ def convolution(img, kernel):
     # Slide kernel across every pixel.
     for y in range(pad_h, image_h-pad_h):
         for x in range(pad_w, image_w-pad_w):
-            # Get center pixel.
-            center = image[y - pad_h:y + pad_h + 1, x - pad_w:x + pad_w + 1]
-            # Perform convolution.
-            conv = (center * kernel).sum()
-            # Write back value to output image.
-            output[y][x] = conv
+            for colour in range(3):
+                # Get center pixel.
+                center = image[y - pad_h:y + pad_h + 1,
+                               x - pad_w:x + pad_w + 1,
+                               colour]
+                # Perform convolution.
+                conv = (center * kernel).sum()
+                # Write back value to output image.
+                output[y, x, colour] = conv
 
     # Return the result of the convolution.
+    output = rescale_intensity(output, in_range=(0, 255))
+    output = (output * 255).astype("uint8")
     return output
 
 
@@ -58,6 +65,10 @@ def construct_kernels(size):
     program is run. Kernels are determines by the `size` argument, which is a
     tuple from the program arguments.
     """
+    kernels = {
+        "smallBlur" : np.ones(size, dtype="float")
+                              * (1.0 / (size[0] * size[1]))
+    }
     # Return kernel dictionary.
     return kernels
 
@@ -106,14 +117,16 @@ def main():
     """
     # Get arguments.
     args = define_args()
-    print(args)
     # Split kernel size.
-    (kW, kH) = args["kernel"].split('x')
+    (kW, kH) = tuple(map(int, args["kernel"].split('x')))
     # Run convolution.
     images = args["image"]
-    smallBlur = np.ones((7, 7), dtype="float") * (1.0 / (7 * 7))
+    # Create kernels.
+    kernels = construct_kernels((kW, kH))
+    # Show convolution result.
     cv2.imshow('Result of convolution',
-               convolution(images[0], smallBlur))
+               convolution(images[0], kernels["smallBlur"]))
+    # Hold image on display.
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
