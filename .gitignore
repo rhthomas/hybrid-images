@@ -1,1 +1,5 @@
+# Latex intermediates
 _minted-report/
+*.log
+*.aux
+*.synctex.gz
