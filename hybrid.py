@@ -74,10 +74,10 @@ def fourier(img, kernel):
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
     for colour in range(3):
-        Fi = np.fft.fft2(image[:, :, colour])
-        Fk = np.fft.fft2(padded_kernel)
+        Fi = np.fft.fft2(np.fft.fftshift(image[:, :, colour]))
+        Fk = np.fft.fft2(np.fft.fftshift(padded_kernel))
         # Inverse fourier.
-        output[:, :, colour] = np.fft.ifft2(Fi * Fk)/255
+        output[:, :, colour] = np.fft.ifftshift(np.fft.ifft2(Fi * Fk)) / 255
 
     # Return the result of convolution.
     return output
@@ -122,7 +122,6 @@ def gaussian_blur(image, sigma):
 def low_pass(image, cutoff):
     """ Generate low pass filter of image.
     """
-    print("[" + image + "]\tGenerating low pass image...")
     return gaussian_blur(image, cutoff)
 
 
@@ -130,7 +129,6 @@ def high_pass(image, cutoff):
     """ Generate high pass filter of image. This is simply the image minus its
     low passed result.
     """
-    print("[" + image + "]\tGenerating high pass image...")
     return (cv2.imread(image)/255) - low_pass(image, cutoff)
 
 
@@ -138,14 +136,16 @@ def hybrid_image(image, cutoff):
     """ Create a hybrid image by summing together the low and high freqency
     images.
     """
-    print("Creating hybrid image...")
     # Perform low pass filter and export.
+    print("[" + image[0] + "]\tGenerating low pass image...")
     low = low_pass(image[0], cutoff[0])
     cv2.imwrite('low.jpg', low * 255)
     # Perform high pass filter and export.
+    print("[" + image[1] + "]\tGenerating high pass image...")
     high = high_pass(image[1], cutoff[1])
     cv2.imwrite('high.jpg', (high + 0.5) * 255)
     # Return hybrid image.
+    print("Creating hybrid image...")
     return low + high
 
 
