@@ -160,7 +160,7 @@ def output_vis(image):
     print("Creating visualisation...")
     # Local variables.
     num = 5  # Number of images to display.
-    gap = 10  # Gap between images (px).
+    gap = 2  # Gap between images (px).
 
     # Create list of images.
     image_list = [image]
@@ -168,7 +168,7 @@ def output_vis(image):
     max_width = image.shape[1]
     # Add images to list and increase max width.
     for i in range(1, num):
-        tmp = cv2.resize(image, (0, 0), fx=0.5 / i, fy=0.5 / i)
+        tmp = cv2.resize(image, (0, 0), fx=0.5 ** i, fy=0.5 ** i)
         max_width += tmp.shape[1] + gap
         image_list.append(tmp)
 
@@ -201,9 +201,13 @@ def main():
         # TODO Run a general algorithm.
     elif args["cutoff"] is not None:
         cutoff = args["cutoff"]
-        hybrid = hybrid_image(images, cutoff)[4 * max(cutoff):-4 * max(cutoff),
-                                              4 * max(cutoff):-4 * max(cutoff)]
-
+        if use_f:
+            # No need to crop the fourier image.
+            hybrid = hybrid_image(images, cutoff)
+        else:
+            hybrid = hybrid_image(images,
+                                  cutoff)[4 * max(cutoff):-4 * max(cutoff),
+                                          4 * max(cutoff):-4 * max(cutoff)]
         # Save resulting images.
         cv2.imwrite(args["output"], hybrid * 255)
         cv2.imwrite(args["visual"], output_vis(hybrid) * 255)
