@@ -23,6 +23,8 @@ def define_args():
                     help="Path to output image file.")
     ap.add_argument("-v", "--visual", required=True,
                     help="Path to output visualisation file.")
+    ap.add_argument("-f", "--fourier", default=False, action='store_true',
+                    help="Use Fourier convolution.")
 
     # Return arguments.
     return vars(ap.parse_args())
@@ -104,7 +106,7 @@ def gaussian_blur(image, sigma):
     if not size % 2:
         size = size + 1
 
-    center = size//2
+    center = size // 2
     kernel = np.zeros((size, size))
 
     # Generate Gaussian blur.
@@ -115,8 +117,10 @@ def gaussian_blur(image, sigma):
 
     kernel = kernel / np.sum(kernel)
 
-    # return convolution(image, kernel)
-    return fourier(image, kernel)
+    if use_f:
+        return fourier(image, kernel)
+    else:
+        return convolution(image, kernel)
 
 
 def low_pass(image, cutoff):
@@ -156,9 +160,9 @@ def output_vis(image):
     print("Creating visualisation...")
     # Local variables.
     num = 5  # Number of images to display.
-    gap = 2  # Gap between images (px).
+    gap = 10  # Gap between images (px).
 
-    # Create list of images
+    # Create list of images.
     image_list = [image]
     max_height = image.shape[0]
     max_width = image.shape[1]
@@ -187,6 +191,9 @@ def main():
     # Get arguments.
     args = define_args()
     images = args["image"]
+    # Create global flag to set convolution method.
+    global use_f
+    use_f = args["fourier"]
 
     # Decide which algorithm to run.
     if args["kernel"] is not None:
