@@ -88,18 +88,6 @@ def fourier(img, kernel):
     return output
 
 
-def construct_kernels(size):
-    """ Builds a dictionary of kernels based on the dimentions passed when the
-    program is run. Kernels are determines by the `size` argument, which is a
-    tuple from the program arguments.
-    """
-    kernels = {
-        "smallBlur": np.ones(size, dtype="float") * (1.0 / 7)
-    }
-    # Return kernel dictionary.
-    return kernels
-
-
 def gaussian_blur(image, sigma):
     """ Builds a Gaussian kernel used to perform the LPF on an image.
     """
@@ -115,8 +103,8 @@ def gaussian_blur(image, sigma):
     # Generate Gaussian blur.
     for y in range(size):
         for x in range(size):
-            diff = np.sqrt((y-center) ** 2 + (x - center) ** 2)
-            kernel[y, x] = np.exp(-(diff ** 2) / (2 * sigma ** 2))
+            diff = (y-center) ** 2 + (x - center) ** 2
+            kernel[y, x] = np.exp(-diff / (2 * sigma ** 2))
 
     kernel = kernel / np.sum(kernel)
 
