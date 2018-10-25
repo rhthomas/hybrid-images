@@ -19,12 +19,14 @@ def define_args():
                     be used.")
     ap.add_argument("-c", "--cutoff", nargs=2, type=int,
                     help="Gaussian cutoff frequencies, e.g. 5 5.")
-    ap.add_argument("-o", "--output", required=True,
+    ap.add_argument("-o", "--output", required=False,
                     help="Path to output image file.")
-    ap.add_argument("-v", "--visual", required=True,
+    ap.add_argument("-v", "--visual", required=False,
                     help="Path to output visualisation file.")
     ap.add_argument("-f", "--fourier", default=False, action='store_true',
                     help="Use Fourier convolution.")
+    ap.add_argument("-s", "--sobel", default=False, action='store_true',
+                    help="Run Sobel edge detection on the first image.")
 
     # Return arguments.
     return vars(ap.parse_args())
@@ -32,7 +34,6 @@ def define_args():
 
 def convolution(img, kernel):
     """ This function executes the convolution between `img` and `kernel`.
-    Note: `None` indicates that there is content yet to complete.
     """
     print("[" + img + "]\tRunning convolution...\n")
     # Load the image.
@@ -72,6 +73,8 @@ def fourier(img, kernel):
     start_w = (image_w - kernel_w) // 2
     padded_kernel[start_h:start_h + kernel_h,
                   start_w:start_w + kernel_w] = kernel
+    # Flip image before convolution.
+    padded_kernel = cv2.flip(padded_kernel, -1)
     # Create image to write to.
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
@@ -91,7 +94,7 @@ def construct_kernels(size):
     tuple from the program arguments.
     """
     kernels = {
-        "smallBlur": np.ones(size, dtype="float") * (1.0 / (size[0] * size[1]))
+        "smallBlur": np.ones(size, dtype="float") * (1.0 / 7)
     }
     # Return kernel dictionary.
     return kernels
@@ -198,7 +201,12 @@ def main():
     # Decide which algorithm to run.
     if args["kernel"] is not None:
         kSize = args["kernel"]
-        # TODO Run a general algorithm.
+        if any(s % 2 == 0 for s in kSize):
+            print("Kernel dimentions must be odd!")
+            exit()
+        kernel = np.ones(kSize, dtype="float") * (255.0 / (kSize[0] * kSize[1]))
+        result = convolution(images[0], kernel)
+        cv2.imwrite(args["output"], result)
     elif args["cutoff"] is not None:
         cutoff = args["cutoff"]
         if use_f:
@@ -210,7 +218,21 @@ def main():
                                           4 * max(cutoff):-4 * max(cutoff)]
         # Save resulting images.
         cv2.imwrite(args["output"], hybrid * 255)
-        cv2.imwrite(args["visual"], output_vis(hybrid) * 255)
+        if args["visual"] is not None:
+            # Only save visualisation if requested.
+            cv2.imwrite(args["visual"], output_vis(hybrid) * 255)
+    elif args["sobel"]:
+        # Run Sobel edge detection.
+        sobel_x = fourier(images[0], 255 * np.array([[1, 0, -1],
+                                               [2, 0, -2],
+                                               [1, 0, -1]]))
+        sobel_y = fourier(images[0], 255 * np.array([[1, 2, 1],
+                                               [0, 0, 0],
+                                               [-1, -2, -1]]))
+        # Save resulting images.
+        cv2.imwrite("sobel_x.jpg", sobel_x)
+        cv2.imwrite("sobel_y.jpg", sobel_y)
+        cv2.imwrite("sobel_xy.jpg", sobel_x + sobel_y)
     else:
         print("No operation defined")
         exit()
