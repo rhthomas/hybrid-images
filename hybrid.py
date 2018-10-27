@@ -103,7 +103,7 @@ def gaussian_blur(image, sigma):
     # Generate Gaussian blur.
     for y in range(size):
         for x in range(size):
-            diff = (y-center) ** 2 + (x - center) ** 2
+            diff = (y - center) ** 2 + (x - center) ** 2
             kernel[y, x] = np.exp(-diff / (2 * sigma ** 2))
 
     kernel = kernel / np.sum(kernel)

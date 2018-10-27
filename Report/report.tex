@@ -78,7 +78,7 @@ time ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg
 This emphasises how much more practical/efficient the Fourier method is. Iterative template convolution is useful to \textit{understand} convolution, however it serves little purpose beyond of that.
 
 \section{Gaussian Filters}
-To low pass filter an image, convolve the Gaussian filter -- of particular cutoff frequency, $\sigma$ -- with the original image. One can simply subtract the low pass filtered result from the original image in order to produce the high pass filter equivalent. 
+To low-pass filter an image, convolve the Gaussian filter -- of particular cutoff frequency, $\sigma$ -- with the original image. One can simply subtract the low-pass filtered result from the original image in order to produce the high-pass filter equivalent. 
 
 The equation for a 2-dimensional Gaussian filter is shown in equation~\ref{eq:gaus}, however the $1/2\pi\sigma^2$ term is usually approximated to the sum of the kernel over the window size.
 
@@ -94,20 +94,32 @@ The below function creates a Gaussian kernel, based on the value of $\sigma$ pas
     lastline = 114
 ]{python}{../hybrid.py}
 
+Figure~\ref{fig:high-low} shows the effect of applying a Gaussian blur to an image in order to produce a low-pass filtered version (left). As previously mentioned, a low-pass filtered image can be subtracted from the original image in order to produce a high-pass filtered equivalent (right). Note that each pixel of the high-pass image is increased by \texttt{0.5} to increase visibility.
+
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.25\textwidth]{../low}
     \includegraphics[width=0.25\textwidth]{../high}
-    \caption{Low and high pass filtered images with $\sigma=4$.}
+    \caption{Low and high-pass filtered images with $\sigma=4$.}
     \label{fig:high-low}
 \end{figure}
 
 \section{Hybrid Images}
-Hybrid images are formed by summing together two \textit{different} low-pass and high-pass filtered images. The higher frequencies dominate when the viewing distance is short, however at a longer distance the lower frequencies dominate. The effect of which is shown in figure~\ref{fig:visual}.
+Hybrid images are formed by summing together two \textit{different} low-pass and high-pass filtered images. The higher frequencies dominate when the viewing distance is short, however at a longer distance the lower frequencies dominate. 
+
+We can produce a hybrid image using the two images from the previous section, the effect of which is shown in figure~\ref{fig:visual}.
+
+\begin{minted}[
+    frame=single,
+    fontsize=\footnotesize,
+    tabsize=4
+]{text}
+> ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg -f
+\end{minted}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.5\textwidth]{../visual}
+    \includegraphics[width=0.75\textwidth]{../visual}
     \caption{Visualising the effect of hybrid images filtered with $\sigma=4$.}
     \label{fig:visual}
 \end{figure}
@@ -130,7 +142,7 @@ This kernel can be applied to the first image in the two element list using the 
     fontsize=\footnotesize,
     tabsize=4
 ]{text}
-> ./hybrid.py -s -i Data/bicycle.bmp Data/motorcycle.bmp
+> ./hybrid.py -i Data/plane.bmp Data/bird.bmp -s
 \end{minted}
 
 \begin{figure}[!htbp]
@@ -143,27 +155,27 @@ This kernel can be applied to the first image in the two element list using the 
 \end{figure}
 
 \subsection{Arbitrary Averaging}
-The \texttt{-k} flag allows you to set the size of a simple averaging kernel. The kernel is simply an array of ones, divided by the product of the dimensions specified -- with a 255 scaling for increased display visibility. 
+The \texttt{-k} flag allows you to set the dimensions of a simple averaging kernel. The kernel is simply an array of ones, divided by the product of the dimensions specified -- with an additional scaling of 255 for increased display visibility. 
 
 \inputminted[
     firstline = 195,
     lastline = 195
 ]{python}{../hybrid.py}
 
-Within the \texttt{main} function, the template convolution is used for arbitrary kernels to help demonstrate the effect of asymmetric dimensions on the image border. Notice how the to and bottom borders in figure~\ref{fig:arb-kern} are larger than the left and right.
+Within the \texttt{main} function, the template convolution is used for arbitrary kernels to help demonstrate the effect of asymmetric dimensions on the image border. Notice how the top/bottom borders in figure~\ref{fig:arb-kern} are larger than the left/right.
 
 \begin{minted}[
     frame=single,
     fontsize=\footnotesize,
     tabsize=4
 ]{text}
-> ./hybrid.py -k 15 3 -i Data/cat.bmp Data/dog.bmp -o arb.jpg
+> ./hybrid.py -k 31 3 -i Data/bird.bmp Data/plane.bmp -o arb.jpg
 \end{minted}
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.25\textwidth]{../arb}
-    \caption{Simple averaging with a kernel size of $15\times 3$.}
+    \caption{Simple averaging with a kernel size of $31\times 3$.}
     \label{fig:arb-kern}
 \end{figure}
 
@@ -203,9 +215,9 @@ Example usage is shown below, with the convolution taking place between ``dog.bm
     tabsize=4
 ]{text}
 > ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg -f
-[data/dog.bmp]	Generating low pass image...
+[data/dog.bmp]	Generating low-pass image...
 [data/dog.bmp]	Calculating Gaussian kernel...
-[data/cat.bmp]	Generating high pass image...
+[data/cat.bmp]	Generating high-pass image...
 [data/cat.bmp]	Calculating Gaussian kernel...
 Creating hybrid image...
 Creating visualisation...
