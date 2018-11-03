@@ -16,7 +16,7 @@
 }
 
 \title{\vspace{-5ex}COMP6223 Coursework 1\\Hybrid Images}
-\date{Nov. 2018}
+\date{8 Nov.\ 2018}
 \author{Rhys Thomas, \tt{rt8g15@ecs.soton.ac.uk}}
 
 \begin{document}
@@ -26,14 +26,14 @@
 Template convolution is a group operator used to modify pixels in an image. Methods of performing the convolution include either an iterative approach, walking through the image and multiplying/summing neighbouring pixels, or using the Fourier transform.
  
 \subsection{Iterative Method}
-The iterative method works by multiplying every image pixel within a kernel and then summing them together. This is quite computationally expensive since the number of floating point multiplications is given by equation~\ref{eq:iterative}.
+The iterative method works by multiplying every image pixel within a kernel and then summing them together. This is quite computationally expensive since the number of iterations over the image is given by equation~\ref{eq:iterative}.
 
 \begin{equation}
-    \mbox{\# of Calculations} = \prod_{i\in\{h,w\}}\left(\mbox{Image}_i-\left\lfloor\frac{\mbox{Kernel}_i}{2}\right\rfloor\right)\times\mbox{Colours}
+    \mbox{\# of Iterations} = \prod_{i\in\{h,w\}}\left(\mbox{Image}_i-\left\lfloor\frac{\mbox{Kernel}_i}{2}\right\rfloor\right)\times\mbox{Colours}
     \label{eq:iterative}
 \end{equation}
 
-So for a $300\times 300$ tricolour image with a kernel size of $3\times 3$, this would result in 268,203 calculations! The source code for this iterative method is given below.
+So for a $300\times 300$ tricolour image with a kernel size of $3\times 3$, this would result in 268,203 iterations! The source code for this method is given below.
 
 \inputminted[
     firstline = 35,
@@ -49,17 +49,37 @@ An artefact intrinsic to the iterative method is that the resulting image needs 
     \label{fig:no-crop}
 \end{figure}
 
-Both this and the computation expense of the operation gives rise to the need for alternative methods. Performing convolution via the Fast Fourier Transform removes the un-calculated border -- since the kernel is padded to the image size -- and is much faster than iterative calculations.
+Both this and the computation expense of the operation gives rise to the need for alternative methods. Performing convolution via the Fast Fourier Transform removes the padding border around the image -- since the kernel is padded to the image size -- and is much faster than iterative calculations.
 
 \subsection{Fourier Method}
-The Fourier convolution gives an equivalent result to template convolution, except it is more computationally efficient by working in the frequency domain, rather than the spacial domain. The algorithm for the Fourier convolution is shown below.
+The Fourier convolution gives an equivalent result to template convolution, except it is more computationally efficient by working in the frequency domain, rather than the spacial domain. 
+
+The image and kernel is first loaded and their dimensions examined. With this information we are able to calculate the padding required around the kernel to make it the same dimensions as the (larger) image. 
+
+When applying convolution using Fourier, the kernel and image must be the same size. This was not a requirement for the iterative method, since it scanned across the image applying calculations on groups of pixels. The padding can be easily calculated by subtracting the kernel dimensions from that of the image, and floor-dividing (\texttt{//}) by 2. Padding around the kernel is set to zero.
+
+The template is then flipped in the spacial domain, this is to insure that we are implementing \textit{convolution} rather than \textit{correlation}, which does not require spacial domain inversion. The Fourier convolution is then calculated for each colour channel in the image using equation~\ref{eq:fft}. 
+
+\begin{equation}
+    \mathcal{F}^{-1}\left( \mathcal{F}(\mbox{image}) \cdot\times \mathcal{F}(\mbox{template})\right) \label{eq:fft}
+\end{equation}
+
+The complete algorithm for the Fourier convolution is shown below.
 
 \inputminted[
     firstline = 64,
     lastline = 88
 ]{python}{../hybrid.py}
 
-When applying convolution using Fourier, the kernel and image must be the same size. This was not a requirement for the iterative method, since it scanned across the image applying calculations on groups of pixels. The padding can be easily calculated by subtracting the kernel dimensions from that of the image, and floor-dividing (\texttt{//}) by 2. Padding around the kernel is set to zero.
+It can be seen on line 85 that after computing the inverse FFT, \texttt{fftshift()} is called. This is due to how numpy calculates the two dimensional FFT; it assumes the origin (DC components) are at the top left of the image whereas we define them in the centre. To compensate for this, we manually shift the FFT so that the origin is in the centre of the image, which gives us the desired result. The effect of this shifting can be seen in figure~\ref{fig:no-shift}, pixels that exceed the image dimensions wrap around to the opposite side.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.25\textwidth]{../no_shift}
+    \includegraphics[width=0.25\textwidth]{../low}    
+    \caption{Effect on the image when not shifting (left) and shifting (right) the convolved FFT.}
+    \label{fig:no-shift}
+\end{figure}
 
 The speed difference between the iterative (``brute-force'') and Fourier methods is noticeable when you run the script, and the recorded execution times for each are as follows,
 
@@ -75,10 +95,10 @@ time ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg
     0.67s user 0.13s system 156% cpu 0.510 total
 \end{minted}
 
-This emphasises how much more practical/efficient the Fourier method is. Iterative template convolution is useful to \textit{understand} convolution, however it serves little purpose beyond of that.
+This emphasises how much more practical/efficient the Fourier method is. Iterative template convolution is useful to \textit{understand} convolution, however it serves little purpose beyond that.
 
 \section{Gaussian Filters}
-To low-pass filter an image, convolve the Gaussian filter -- of particular cutoff frequency, $\sigma$ -- with the original image. One can simply subtract the low-pass filtered result from the original image in order to produce the high-pass filter equivalent. 
+To low-pass filter an image, convolve a Gaussian filter -- of particular cutoff frequency, $\sigma$ -- with the original image. One can simply subtract the low-pass filtered result from the original image in order to produce the high-pass filter equivalent. 
 
 The equation for a 2-dimensional Gaussian filter is shown in equation~\ref{eq:gaus}, however the $1/2\pi\sigma^2$ term is usually approximated to the sum of the kernel over the window size.
 
@@ -105,9 +125,7 @@ Figure~\ref{fig:high-low} shows the effect of applying a Gaussian blur to an ima
 \end{figure}
 
 \section{Hybrid Images}
-Hybrid images are formed by summing together two \textit{different} low-pass and high-pass filtered images. The higher frequencies dominate when the viewing distance is short, however at a longer distance the lower frequencies dominate. 
-
-We can produce a hybrid image using the two images from the previous section, the effect of which is shown in figure~\ref{fig:visual}.
+Hybrid images are formed by summing together two \textit{different} low-pass and high-pass filtered images. The higher frequencies dominate when the viewing distance is short, however at a longer distance the lower frequencies dominate. Figure~\ref{fig:visual} is a hybrid image composed from the two images in the previous section. The result is downsampled in order to demonstrate the aforementioned effect.
 
 \begin{minted}[
     frame=single,
@@ -128,7 +146,7 @@ We can produce a hybrid image using the two images from the previous section, th
 To demonstrate the convolution further, the script offers support for additional kernels. You will note that these other convolutions only act on the first image entered with the \texttt{-i} flag. This is to reduce script complexity yet demonstrating the working concept.
 
 \subsection{Sobel Edge Detection}
-Sobel edge detection applies the 2-dimensional kernels shown in the code below. 
+Sobel edge detection applies the two dimensional kernels shown in the code below. One detects horizontal edges while the other detects vertical edges. The result of these two convolutions can be summed in order to display edges in both directions as shown in figure~\ref{fig:high-low}.
 
 \inputminted[
     firstline = 213,
@@ -150,7 +168,7 @@ This kernel can be applied to the first image in the two element list using the 
     \includegraphics[width=0.25\textwidth]{../sobel_x}
     \includegraphics[width=0.25\textwidth]{../sobel_y}
     \includegraphics[width=0.25\textwidth]{../sobel_xy}    
-    \caption{Sobel edge detection applied in both horizontal and vertical directions. These are then summed to produce a combined edge detection.}
+    \caption{Sobel edge detection applied in both horizontal (left) and vertical (middle) directions. These are then summed to produce a combined edge detection (right).}
     \label{fig:high-low}
 \end{figure}
 
@@ -215,10 +233,12 @@ Example usage is shown below, with the convolution taking place between ``dog.bm
     tabsize=4
 ]{text}
 > ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg -f
-[data/dog.bmp]	Generating low-pass image...
-[data/dog.bmp]	Calculating Gaussian kernel...
-[data/cat.bmp]	Generating high-pass image...
-[data/cat.bmp]	Calculating Gaussian kernel...
+[Data/dog.bmp]	Generating low pass image...
+[Data/dog.bmp]	Calculating Gaussian kernel...
+./hybrid.py:85: ComplexWarning: Casting complex values to real discards the imaginary part
+  output[:, :, colour] = np.fft.fftshift(np.fft.ifft2(Fi * Fk)) / 255
+[Data/cat.bmp]	Generating high pass image...
+[Data/cat.bmp]	Calculating Gaussian kernel...
 Creating hybrid image...
 Creating visualisation...
 Done.
