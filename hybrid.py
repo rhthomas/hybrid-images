@@ -79,10 +79,10 @@ def fourier(img, kernel):
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
     for colour in range(3):
-        Fi = np.fft.fft2(np.fft.fftshift(image[:, :, colour]))
-        Fk = np.fft.fft2(np.fft.fftshift(padded_kernel))
+        Fi = np.fft.fft2(image[:, :, colour])
+        Fk = np.fft.fft2(padded_kernel)
         # Inverse fourier.
-        output[:, :, colour] = np.fft.ifftshift(np.fft.ifft2(Fi * Fk)) / 255
+        output[:, :, colour] = np.fft.fftshift(np.fft.ifft2(Fi * Fk)) / 255
 
     # Return the result of convolution.
     return output
