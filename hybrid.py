@@ -73,8 +73,6 @@ def fourier(img, kernel):
     start_w = (image_w - kernel_w) // 2
     padded_kernel[start_h:start_h + kernel_h,
                   start_w:start_w + kernel_w] = kernel
-    # Flip image before convolution.
-    padded_kernel = cv2.flip(padded_kernel, -1)
     # Create image to write to.
     output = np.zeros(image.shape)
     # Run FFT on all 3 channels.
