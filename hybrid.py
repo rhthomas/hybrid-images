@@ -64,6 +64,8 @@ def convolution(img, kernel):
 
 
 def fourier(img, kernel):
+    """ Compute convolution between `img` and `kernel` using numpy's FFT.
+    """
     # Load the image.
     image = cv2.imread(img)
     # Get size of image and kernel.
@@ -212,11 +214,11 @@ def main():
     elif args["sobel"]:
         # Run Sobel edge detection.
         sobel_x = fourier(images[0], 255 * np.array([[1, 0, -1],
-                                               [2, 0, -2],
-                                               [1, 0, -1]]))
+                                                     [2, 0, -2],
+                                                     [1, 0, -1]]))
         sobel_y = fourier(images[0], 255 * np.array([[1, 2, 1],
-                                               [0, 0, 0],
-                                               [-1, -2, -1]]))
+                                                     [0, 0, 0],
+                                                     [-1, -2, -1]]))
         # Save resulting images.
         cv2.imwrite("sobel_x.jpg", sobel_x)
         cv2.imwrite("sobel_y.jpg", sobel_y)
