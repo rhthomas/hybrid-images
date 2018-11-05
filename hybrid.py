@@ -38,6 +38,8 @@ def convolution(img, kernel):
     print("[" + img + "]\tRunning convolution...\n")
     # Load the image.
     image = cv2.imread(img)
+    # Flip template before convolution.
+    kernel = cv2.flip(kernel, -1)
     # Get size of image and kernel. 3rd value of shape is colour channel.
     (image_h, image_w) = image.shape[:2]
     (kernel_h, kernel_w) = kernel.shape[:2]
