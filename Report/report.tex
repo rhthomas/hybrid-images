@@ -36,8 +36,8 @@ The iterative method works by multiplying every image pixel within a kernel and 
 So for a $300\times 300$ tricolour image with a kernel size of $3\times 3$, this would result in 268,203 iterations! The source code for this method is given below.
 
 \inputminted[
-    firstline = 35,
-    lastline = 63
+    firstline = 34,
+    lastline = 62
 ]{python}{../hybrid.py}
 
 You will notice that on line 42 the kernel is inverted on both axis in the spacial domain. This is to insure that we are implementing \textit{convolution} rather than \textit{correlation}, which does not require spacial domain inversion.
@@ -67,8 +67,8 @@ When applying convolution using Fourier, the kernel and image must be the same s
 The FFT of each image is then calculated, multiplied together and then the FFT is inverted. You will notice, unlike in the template method, the kernel does not require inversion. This is because the inversion of the kernel is intrinsic to the Fourier transform.
 
 \inputminted[
-    firstline = 66,
-    lastline = 90
+    firstline = 65,
+    lastline = 89
 ]{python}{../hybrid.py}
 
 It can be seen on line 87 that after computing the inverse FFT, \texttt{fftshift()} is called. This is due to how numpy calculates the two dimensional FFT; it assumes the origin (DC components) are at the top left of the image whereas we define them in the centre. To compensate for this, we manually shift the FFT so that the origin is in the centre of the image, which gives us the desired result. The effect of this shifting can be seen in figure~\ref{fig:no-shift} where pixels that exceed the image dimensions wrap around to the opposite side.
@@ -110,8 +110,8 @@ The equation for a 2-dimensional Gaussian filter is shown in equation~\ref{eq:ga
 The below function creates a Gaussian kernel, based on the value of $\sigma$ passed to the function, and then runs either Fourier or template convolution based on the global flag \texttt{use\_f}. 
 
 \inputminted[
-    firstline = 93,
-    lastline = 116
+    firstline = 92,
+    lastline = 115
 ]{python}{../hybrid.py}
 
 Figure~\ref{fig:high-low} shows the effect of applying a Gaussian blur to an image in order to produce a low-pass filtered version (left). As previously mentioned, a low-pass filtered image can be subtracted from the original image in order to produce a high-pass filtered equivalent (right). Note that each pixel of the high-pass image is increased by \texttt{0.5} to increase visibility.
@@ -149,8 +149,8 @@ To demonstrate the convolution further, the script offers support for additional
 Sobel edge detection applies the two dimensional kernels shown in the code below. One detects horizontal edges while the other detects vertical edges. The result of these two convolutions can be summed in order to display edges in both directions as shown in figure~\ref{fig:high-low}.
 
 \inputminted[
-    firstline = 216,
-    lastline = 221
+    firstline = 215,
+    lastline = 220
 ]{python}{../hybrid.py}
 
 This kernel can be applied to the first image in the two element list using the \texttt{-s} flag, as shown below.
@@ -176,8 +176,8 @@ This kernel can be applied to the first image in the two element list using the 
 The \texttt{-k} flag allows you to set the dimensions of a simple averaging kernel. The kernel is simply an array of ones, divided by the product of the dimensions specified -- with an additional scaling of 255 for increased display visibility. 
 
 \inputminted[
-    firstline = 197,
-    lastline = 197
+    firstline = 196,
+    lastline = 196
 ]{python}{../hybrid.py}
 
 Within the \texttt{main} function, the template convolution is used for arbitrary kernels in order to demonstrate the effect of asymmetric dimensions on the image border. Notice how the top/bottom borders in figure~\ref{fig:arb-kern} are larger than the left/right.
