@@ -26,7 +26,7 @@
 Template convolution is a group operator used to modify pixels in an image. Methods of performing the convolution include either an iterative approach, walking through the image and multiplying/summing neighbouring pixels, or using the Fourier transform.
  
 \subsection{Iterative Method}
-The iterative method works by multiplying every image pixel within a kernel and then summing them together. This is quite computationally expensive since the number of iterations over the image is given by equation~\ref{eq:iterative}.
+The iterative method works by multiplying every image pixel within a kernel and then summing them together; the result is then written to the centre pixel of the kernel. This is quite computationally expensive since the number of iterations over the image is given by equation~\ref{eq:iterative}.
 
 \begin{equation}
     \mbox{\# of Iterations} = \prod_{i\in\{h,w\}}\left(\mbox{Image}_i-\left\lfloor\frac{\mbox{Kernel}_i}{2}\right\rfloor\right)\times\mbox{Colours}
@@ -37,10 +37,12 @@ So for a $300\times 300$ tricolour image with a kernel size of $3\times 3$, this
 
 \inputminted[
     firstline = 35,
-    lastline = 61
+    lastline = 63
 ]{python}{../hybrid.py}
 
-An artefact intrinsic to the iterative method is that the resulting image needs to be cropped. This is because the kernel has a border which is not included in the calculation, thus reducing the size of the image. The effect of this is shown in figure~\ref{fig:no-crop}.
+You will notice that on line 42 the kernel is inverted on both axis in the spacial domain. This is to insure that we are implementing \textit{convolution} rather than \textit{correlation}, which does not require spacial domain inversion.
+
+An artefact intrinsic to the iterative method is that the resulting image needs to be cropped. This is because the kernel has a border which is not included in the calculation -- remember, the convolution result during each iteration is only written to the centre pixel -- thus reducing the size of the image; the effect of which is shown in figure~\ref{fig:no-crop}.
 
 \begin{figure}
     \centering
@@ -49,39 +51,37 @@ An artefact intrinsic to the iterative method is that the resulting image needs 
     \label{fig:no-crop}
 \end{figure}
 
-Both this and the computation expense of the operation gives rise to the need for alternative methods. Performing convolution via the Fast Fourier Transform removes the padding border around the image -- since the kernel is padded to the image size -- and is much faster than iterative calculations.
+Both this and the computation expense of the algorithm gives rise to the need for alternative methods. Performing convolution via the Fast Fourier Transform removes the padding border around the image -- since the kernel is padded to the image size -- and is much faster than iterative calculations.
 
 \subsection{Fourier Method}
-The Fourier convolution gives an equivalent result to template convolution, except it is more computationally efficient by working in the frequency domain, rather than the spacial domain. 
-
-The image and kernel is first loaded and their dimensions examined. With this information we are able to calculate the padding required around the kernel to make it the same dimensions as the (larger) image. 
-
-When applying convolution using Fourier, the kernel and image must be the same size. This was not a requirement for the iterative method, since it scanned across the image applying calculations on groups of pixels. The padding can be easily calculated by subtracting the kernel dimensions from that of the image, and floor-dividing (\texttt{//}) by 2. Padding around the kernel is set to zero.
-
-The template is then flipped in the spacial domain, this is to insure that we are implementing \textit{convolution} rather than \textit{correlation}, which does not require spacial domain inversion. The Fourier convolution is then calculated for each colour channel in the image using equation~\ref{eq:fft}. 
+The Fourier convolution gives an equivalent result to template convolution, except it is more computationally efficient by working in the frequency domain, rather than the spacial domain. The Fourier convolution is calculated for each colour channel in the image using equation~\ref{eq:fft}. 
 
 \begin{equation}
-    \mathcal{F}^{-1}\left( \mathcal{F}(\mbox{image}) \cdot\times \mathcal{F}(\mbox{template})\right) \label{eq:fft}
+    \mbox{Convolution} = \mathcal{F}^{-1}\left( \mathcal{F}(\mbox{image}) \cdot\times\ \mathcal{F}(\mbox{kernel})\right) \label{eq:fft}
 \end{equation}
 
-The complete algorithm for the Fourier convolution is shown below.
+In the Fourier function shown below, the image and kernel are first loaded and their dimensions examined. With this information we are able to calculate the padding required around the kernel, in order to make it the same dimensions as the (larger) image. 
+
+When applying convolution using Fourier, the kernel and image must be the same size. This was not a requirement for the iterative method, since it scanned across the image applying calculations on groups of pixels. The padding can be easily calculated by subtracting the kernel dimensions from that of the image, and floor-dividing (\texttt{//}) by 2. 
+
+The FFT of each image is then calculated, multiplied together and then the FFT is inverted. You will notice, unlike in the template method, the kernel does not require inversion. This is because the inversion of the kernel is intrinsic to the Fourier transform.
 
 \inputminted[
-    firstline = 64,
-    lastline = 88
+    firstline = 66,
+    lastline = 90
 ]{python}{../hybrid.py}
 
-It can be seen on line 85 that after computing the inverse FFT, \texttt{fftshift()} is called. This is due to how numpy calculates the two dimensional FFT; it assumes the origin (DC components) are at the top left of the image whereas we define them in the centre. To compensate for this, we manually shift the FFT so that the origin is in the centre of the image, which gives us the desired result. The effect of this shifting can be seen in figure~\ref{fig:no-shift}, pixels that exceed the image dimensions wrap around to the opposite side.
+It can be seen on line 87 that after computing the inverse FFT, \texttt{fftshift()} is called. This is due to how numpy calculates the two dimensional FFT; it assumes the origin (DC components) are at the top left of the image whereas we define them in the centre. To compensate for this, we manually shift the FFT so that the origin is in the centre of the image, which gives us the desired result. The effect of this shifting can be seen in figure~\ref{fig:no-shift} where pixels that exceed the image dimensions wrap around to the opposite side.
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.25\textwidth]{../no_shift}
     \includegraphics[width=0.25\textwidth]{../low}    
-    \caption{Effect on the image when not shifting (left) and shifting (right) the convolved FFT.}
+    \caption{Effect on the image when not shifting (left) and shifting (right) the convolved images.}
     \label{fig:no-shift}
 \end{figure}
 
-The speed difference between the iterative (``brute-force'') and Fourier methods is noticeable when you run the script, and the recorded execution times for each are as follows,
+The speed difference between the iterative and Fourier methods is noticeable when you run the script. The recorded execution times for each are as follows,
 
 \begin{minted}[
     frame=single,
@@ -100,18 +100,18 @@ This emphasises how much more practical/efficient the Fourier method is. Iterati
 \section{Gaussian Filters}
 To low-pass filter an image, convolve a Gaussian filter -- of particular cutoff frequency, $\sigma$ -- with the original image. One can simply subtract the low-pass filtered result from the original image in order to produce the high-pass filter equivalent. 
 
-The equation for a 2-dimensional Gaussian filter is shown in equation~\ref{eq:gaus}, however the $1/2\pi\sigma^2$ term is usually approximated to the sum of the kernel over the window size.
+The equation for a 2-dimensional Gaussian filter is shown in equation~\ref{eq:gaus}, however the $1/2\pi\sigma^2$ term is usually approximated to the sum of the kernel over its window size.
 
 \begin{equation}
     G(x, y, \sigma) = \frac{1}{2\pi\sigma^2}\exp\left(\frac{-(x^2+y^2)}{2\sigma^2}\right)
     \label{eq:gaus}
 \end{equation}
 
-The below function creates a Gaussian kernel, based on the value of $\sigma$ passed to the function. 
+The below function creates a Gaussian kernel, based on the value of $\sigma$ passed to the function, and then runs either Fourier or template convolution based on the global flag \texttt{use\_f}. 
 
 \inputminted[
-    firstline = 91,
-    lastline = 114
+    firstline = 93,
+    lastline = 116
 ]{python}{../hybrid.py}
 
 Figure~\ref{fig:high-low} shows the effect of applying a Gaussian blur to an image in order to produce a low-pass filtered version (left). As previously mentioned, a low-pass filtered image can be subtracted from the original image in order to produce a high-pass filtered equivalent (right). Note that each pixel of the high-pass image is increased by \texttt{0.5} to increase visibility.
@@ -149,8 +149,8 @@ To demonstrate the convolution further, the script offers support for additional
 Sobel edge detection applies the two dimensional kernels shown in the code below. One detects horizontal edges while the other detects vertical edges. The result of these two convolutions can be summed in order to display edges in both directions as shown in figure~\ref{fig:high-low}.
 
 \inputminted[
-    firstline = 213,
-    lastline = 219
+    firstline = 216,
+    lastline = 221
 ]{python}{../hybrid.py}
 
 This kernel can be applied to the first image in the two element list using the \texttt{-s} flag, as shown below.
@@ -176,11 +176,11 @@ This kernel can be applied to the first image in the two element list using the 
 The \texttt{-k} flag allows you to set the dimensions of a simple averaging kernel. The kernel is simply an array of ones, divided by the product of the dimensions specified -- with an additional scaling of 255 for increased display visibility. 
 
 \inputminted[
-    firstline = 195,
-    lastline = 195
+    firstline = 197,
+    lastline = 197
 ]{python}{../hybrid.py}
 
-Within the \texttt{main} function, the template convolution is used for arbitrary kernels to help demonstrate the effect of asymmetric dimensions on the image border. Notice how the top/bottom borders in figure~\ref{fig:arb-kern} are larger than the left/right.
+Within the \texttt{main} function, the template convolution is used for arbitrary kernels in order to demonstrate the effect of asymmetric dimensions on the image border. Notice how the top/bottom borders in figure~\ref{fig:arb-kern} are larger than the left/right.
 
 \begin{minted}[
     frame=single,
@@ -243,5 +243,7 @@ Creating hybrid image...
 Creating visualisation...
 Done.
 \end{minted}
+
+The full code can be found in the archive submitted along with the report.
 
 \end{document}
