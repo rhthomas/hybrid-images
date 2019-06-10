@@ -8,54 +8,39 @@ import numpy as np
 
 
 def define_args():
-    """ Defines the arguments required to run the program.
-    """
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "-i", "--image", nargs=2, required=True, help="Path to input images."
-    )
-    ap.add_argument(
-        "-k",
-        "--kernel",
-        nargs=2,
-        type=int,
-        help="Kernal size, e.g. 5 7. Note: first image in list will\
-                    be used.",
-    )
-    ap.add_argument(
-        "-c",
-        "--cutoff",
-        nargs=2,
-        type=int,
-        help="Gaussian cutoff frequencies, e.g. 5 5.",
-    )
-    ap.add_argument("-o", "--output", required=False, help="Path to output image file.")
-    ap.add_argument(
-        "-v", "--visual", required=False, help="Path to output visualisation file."
-    )
-    ap.add_argument(
-        "-f",
-        "--fourier",
-        default=False,
-        action="store_true",
-        help="Use Fourier convolution.",
-    )
-    ap.add_argument(
-        "-s",
-        "--sobel",
-        default=False,
-        action="store_true",
-        help="Run Sobel edge detection on the first image.",
-    )
+    ''' Defines the arguments required to run the program.
+    '''
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
 
-    # Return arguments.
-    return vars(ap.parse_args())
+    parser.add_argument('-o', '--output', default='output.jpg', help='Path to output image file.')
+
+    # Kernel demo arguments.
+    kernel_parser = subparsers.add_parser('kernel')
+    kernel_parser.add_argument('image', type=str, nargs=1, help='Input image')
+    kernel_parser.add_argument('-s', '--size', nargs=2, type=int, help='Kernel size, e.g. 5 7.')
+    kernel_parser.set_defaults(func=run_kernel)
+
+    # Hybrid demo arguments.
+    hybrid_parser = subparsers.add_parser('hybrid')
+    hybrid_parser.add_argument('images', type=str, nargs=2, help='Input images')
+    hybrid_parser.add_argument('-c', '--cutoff', type=int, nargs=2, help='Gaussian cutoff frequencies, e.g. 5 5.')
+    hybrid_parser.add_argument('-v', '--visual', action='store_true', default=False, help='Save as visualisation.')
+    hybrid_parser.add_argument('-f', '--fourier', action='store_true', default=False, help='Use fourier convolution.')
+    kernel_parser.set_defaults(func=run_hybrid)
+
+    # Sobel demo arguments.
+    sobel_parser = subparsers.add_parser('sobel')
+    sobel_parser.add_argument('image', type=str, nargs=1, help='Input image')
+    sobel_parser.set_defaults(func=run_sobel)
+
+    return vars(parser.parse_args())
 
 
 def convolution(img, kernel):
-    """ This function executes the convolution between `img` and `kernel`.
-    """
-    print("[" + img + "]\tRunning convolution...\n")
+    ''' This function executes the convolution between `img` and `kernel`.
+    '''
+    print("[{img}]\tRunning convolution...\n".format(img))
     # Load the image.
     image = cv2.imread(img)
     # Flip template before convolution.
@@ -84,8 +69,8 @@ def convolution(img, kernel):
 
 
 def fourier(img, kernel):
-    """ Compute convolution between `img` and `kernel` using numpy's FFT.
-    """
+    ''' Compute convolution between `img` and `kernel` using numpy's FFT.
+    '''
     # Load the image.
     image = cv2.imread(img)
     # Get size of image and kernel.
@@ -110,9 +95,9 @@ def fourier(img, kernel):
 
 
 def gaussian_blur(image, sigma):
-    """ Builds a Gaussian kernel used to perform the LPF on an image.
-    """
-    print("[" + image + "]\tCalculating Gaussian kernel...")
+    ''' Builds a Gaussian kernel used to perform the LPF on an image.
+    '''
+    print("[{image}]\tCalculating Gaussian kernel...".format(image))
     # Calculate size of filter.
     size = 8 * sigma + 1
     if not size % 2:
@@ -136,28 +121,28 @@ def gaussian_blur(image, sigma):
 
 
 def low_pass(image, cutoff):
-    """ Generate low pass filter of image.
-    """
+    ''' Generate low pass filter of image.
+    '''
     return gaussian_blur(image, cutoff)
 
 
 def high_pass(image, cutoff):
-    """ Generate high pass filter of image. This is simply the image minus its
+    ''' Generate high pass filter of image. This is simply the image minus its
     low passed result.
-    """
+    '''
     return (cv2.imread(image) / 255) - low_pass(image, cutoff)
 
 
 def hybrid_image(image, cutoff):
-    """ Create a hybrid image by summing together the low and high freqency
+    ''' Create a hybrid image by summing together the low and high freqency
     images.
-    """
+    '''
     # Perform low pass filter and export.
-    print("[" + image[0] + "]\tGenerating low pass image...")
+    print("[{image}\tGenerating low pass image...".format(image[0]))
     low = low_pass(image[0], cutoff[0])
     cv2.imwrite("low.jpg", low * 255)
     # Perform high pass filter and export.
-    print("[" + image[1] + "]\tGenerating high pass image...")
+    print("[{image}]\tGenerating high pass image...".format(image[1]))
     high = high_pass(image[1], cutoff[1])
     cv2.imwrite("high.jpg", (high + 0.5) * 255)
     # Return hybrid image.
@@ -166,9 +151,9 @@ def hybrid_image(image, cutoff):
 
 
 def output_vis(image):
-    """ Display hybrid image comparison for report. Visualisation shows 5 images
+    ''' Display hybrid image comparison for report. Visualisation shows 5 images
     reducing in size to simulate viewing the image from a distance.
-    """
+    '''
     print("Creating visualisation...")
     # Local variables.
     num = 5  # Number of images to display.
@@ -198,58 +183,49 @@ def output_vis(image):
     return stack
 
 
-def main():
-    """ Main function handles execution of algorithms.
-    """
-    # Get arguments.
-    args = define_args()
-    images = args["image"]
-    # Create global flag to set convolution method.
-    global use_f
-    use_f = args["fourier"]
-
-    # Decide which algorithm to run.
-    if args["kernel"] is not None:
-        kSize = args["kernel"]
-        if any(s % 2 == 0 for s in kSize):
-            print("Kernel dimentions must be odd!")
-            exit()
-        kernel = np.ones(kSize, dtype="float") * (255.0 / (kSize[0] * kSize[1]))
-        result = convolution(images[0], kernel)
-        cv2.imwrite(args["output"], result)
-    elif args["cutoff"] is not None:
-        cutoff = args["cutoff"]
-        if use_f:
-            # No need to crop the fourier image.
-            hybrid = hybrid_image(images, cutoff)
-        else:
-            hybrid = hybrid_image(images, cutoff)[
-                4 * max(cutoff) : -4 * max(cutoff), 4 * max(cutoff) : -4 * max(cutoff)
-            ]
-        # Save resulting images.
-        cv2.imwrite(args["output"], hybrid * 255)
-        if args["visual"] is not None:
-            # Only save visualisation if requested.
-            cv2.imwrite(args["visual"], output_vis(hybrid) * 255)
-    elif args["sobel"]:
-        # Run Sobel edge detection.
-        sobel_x = fourier(
-            images[0], 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
-        )
-        sobel_y = fourier(
-            images[0], 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
-        )
-        # Save resulting images.
-        cv2.imwrite("sobel_x.jpg", sobel_x)
-        cv2.imwrite("sobel_y.jpg", sobel_y)
-        cv2.imwrite("sobel_xy.jpg", sobel_x + sobel_y)
-    else:
-        print("No operation defined")
+def run_kernel(args):
+    kSize = args["kernel"]
+    if any(s % 2 == 0 for s in kSize):
+        print("Kernel dimensions must be odd!")
         exit()
 
-    print("Done.")
+    kernel = np.ones(kSize, dtype="float") * (255.0 / (kSize[0] * kSize[1]))
+    result = convolution(args.image, kernel)
+    cv2.imwrite(args.output, result)
+
+
+def run_hybrid(args):
+    if args.fourier:
+        hybrid = hybrid_image(args.images, args.cutoff)
+    else:
+        hybrid = hybrid_image(args.images, args.cutoff)[
+            4 * max(cutoff) : -4 * max(cutoff), 4 * max(cutoff) : -4 * max(cutoff)
+        ]
+
+    # Save images.
+    if args.visual:
+        cv2.imwrite(args.visual, output_vis(hybrid) * 255)
+    else:
+        cv2.imwrite(args.output, hybrid * 255)
+
+
+def run_sobel(args):
+    sobel_x = fourier(
+        args.image, 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+    )
+    sobel_y = fourier(
+        args.image, 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+    )
+
+    cv2.imwrite("sobel_x.jpg", sobel_x)
+    cv2.imwrite("sobel_y.jpg", sobel_y)
+    cv2.imwrite("sobel_xy.jpg", sobel_x + sobel_y)
 
 
 # Call the main function.
 if __name__ == "__main__":
-    main()
+    try:
+        args = define_args()
+        args.func(args)
+    except (BrokenPipeError, IOError):
+        pass
