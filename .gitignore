@@ -3,3 +3,9 @@ _minted-report/
 *.log
 *.aux
 *.synctex.gz
+
+.venv/
+.vscode/
+Report/
+archive.zip
+__pycache__/
