@@ -1,40 +1,8 @@
 #!/usr/bin/env python3
-# pip install -r requirements.txt
-# ./hybrid.py -i data/dog.bmp data/cat.bmp -c 4 4 -o hybrid.jpg -v visual.jpg
 
-import argparse
 import cv2
 import numpy as np
-
-
-def define_args():
-    ''' Defines the arguments required to run the program.
-    '''
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-
-    parser.add_argument('-o', '--output', default='output.jpg', help='Path to output image file.')
-
-    # Kernel demo arguments.
-    kernel_parser = subparsers.add_parser('kernel')
-    kernel_parser.add_argument('image', type=str, nargs=1, help='Input image')
-    kernel_parser.add_argument('-s', '--size', nargs=2, type=int, help='Kernel size, e.g. 5 7.')
-    kernel_parser.set_defaults(func=run_kernel)
-
-    # Hybrid demo arguments.
-    hybrid_parser = subparsers.add_parser('hybrid')
-    hybrid_parser.add_argument('images', type=str, nargs=2, help='Input images')
-    hybrid_parser.add_argument('-c', '--cutoff', type=int, nargs=2, help='Gaussian cutoff frequencies, e.g. 5 5.')
-    hybrid_parser.add_argument('-v', '--visual', action='store_true', default=False, help='Save as visualisation.')
-    hybrid_parser.add_argument('-f', '--fourier', action='store_true', default=False, help='Use fourier convolution.')
-    kernel_parser.set_defaults(func=run_hybrid)
-
-    # Sobel demo arguments.
-    sobel_parser = subparsers.add_parser('sobel')
-    sobel_parser.add_argument('image', type=str, nargs=1, help='Input image')
-    sobel_parser.set_defaults(func=run_sobel)
-
-    return vars(parser.parse_args())
+import click
 
 
 def convolution(img, kernel):
@@ -183,49 +151,61 @@ def output_vis(image):
     return stack
 
 
-def run_kernel(args):
-    kSize = args["kernel"]
-    if any(s % 2 == 0 for s in kSize):
+@click.group()
+def main():
+    pass
+
+
+@main.command()
+@click.argument('image', type=str, nargs=1)
+@click.option('-o', '--output', default='output.jpg')
+@click.option('-s', '--size', nargs=2, type=int)
+def run_kernel(**kwargs):
+    if any(s % 2 == 0 for s in kwargs['size']):
         print("Kernel dimensions must be odd!")
         exit()
 
-    kernel = np.ones(kSize, dtype="float") * (255.0 / (kSize[0] * kSize[1]))
-    result = convolution(args.image, kernel)
-    cv2.imwrite(args.output, result)
+    kernel = np.ones(kwargs['size'], dtype="float") * (255.0 / (kwargs['size'][0] * kwargs['size'][1]))
+    result = convolution(kwargs['image'], kernel)
+    cv2.imwrite(kwargs['output'], result)
 
 
-def run_hybrid(args):
-    if args.fourier:
-        hybrid = hybrid_image(args.images, args.cutoff)
+@main.command()
+@click.argument('images', type=str, nargs=2)
+@click.option('-o', '--output', default='output.jpg')
+@click.option('-c', '--cutoff', type=int, nargs=2)
+@click.option('-v', '--visual', is_flag=True, default=False)
+@click.option('-f', '--fourier', is_flag=True, default=False)
+def hybrid(**kwargs):
+    if kwargs['fourier']:
+        hybrid = hybrid_image(kwargs['images'], kwargs['cutoff'])
     else:
-        hybrid = hybrid_image(args.images, args.cutoff)[
-            4 * max(cutoff) : -4 * max(cutoff), 4 * max(cutoff) : -4 * max(cutoff)
+        hybrid = hybrid_image(kwargs['images'], kwargs['cutoff'])[
+            4 * max(kwargs['cutoff']) : -4 * max(kwargs['cutoff']), 4 * max(kwargs['cutoff']) : -4 * max(kwargs['cutoff'])
         ]
 
     # Save images.
-    if args.visual:
-        cv2.imwrite(args.visual, output_vis(hybrid) * 255)
+    if kwargs['visual']:
+        cv2.imwrite(kwargs['visual'], output_vis(hybrid) * 255)
     else:
-        cv2.imwrite(args.output, hybrid * 255)
+        cv2.imwrite(kwargs['output'], hybrid * 255)
 
 
-def run_sobel(args):
+@main.command()
+@click.argument('image', type=str, nargs=1)
+@click.option('-o', '--output', default='output.jpg')
+def sobel(**kwargs):
     sobel_x = fourier(
-        args.image, 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+        kwargs['image'], 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
     )
     sobel_y = fourier(
-        args.image, 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+        kwargs['image'], 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
     )
 
-    cv2.imwrite("sobel_x.jpg", sobel_x)
-    cv2.imwrite("sobel_y.jpg", sobel_y)
-    cv2.imwrite("sobel_xy.jpg", sobel_x + sobel_y)
+    cv2.imwrite(kwargs['output'].split('.')[0] + "_x.jpg", sobel_x)
+    cv2.imwrite(kwargs['output'].split('.')[0] + "_y.jpg", sobel_y)
+    cv2.imwrite(kwargs['output'].split('.')[0] + "_xy.jpg", sobel_x + sobel_y)
 
 
-# Call the main function.
 if __name__ == "__main__":
-    try:
-        args = define_args()
-        args.func(args)
-    except (BrokenPipeError, IOError):
-        pass
+    main()
