@@ -159,8 +159,8 @@ def main():
 
 @main.command()
 @click.argument("image", type=str, nargs=1)
-@click.option("-o", "--output", default="output.jpg")
-@click.option("-s", "--size", nargs=2, type=int)
+@click.option("-o", "--output", default="output.jpg", help="Output file.")
+@click.option("-s", "--size", nargs=2, type=int, help="Kernel dimensions.")
 def kernel(**kwargs):
     """ Demonstrate the effect of kernel size.
     """
@@ -178,21 +178,15 @@ def kernel(**kwargs):
 
 @main.command()
 @click.argument("images", type=str, nargs=2)
-@click.option("-o", "--output", default="output.jpg")
-@click.option("-c", "--cutoff", default=[4, 4], type=int, nargs=2)
-@click.option("-v", "--visual", is_flag=True, default=False)
-@click.option("-f", "--fourier", is_flag=True, default=False)
+@click.option("-o", "--output", default="output.jpg", help="Output file.")
+@click.option("-c", "--cutoff", default=[4, 4], type=int, nargs=2, help="High/low cutoff frequencies.")
+@click.option("-v", "--visual", is_flag=True, default=False, help="Generate visualisation.")
+@click.option("-f", "--fourier", is_flag=True, default=False, help="Use fourier convolution.")
 def hybrid(**kwargs):
     """ Create hybrid image from two source images.
     """
 
-    if kwargs["fourier"]:
-        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])
-    else:
-        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])[
-            4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
-            4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
-        ]
+    hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])
 
     if kwargs["visual"]:
         cv2.imwrite(kwargs["output"], output_vis(hybrid) * 255)
@@ -202,7 +196,7 @@ def hybrid(**kwargs):
 
 @main.command()
 @click.argument("image", type=str, nargs=1)
-@click.option("-o", "--output", default="output.jpg")
+@click.option("-o", "--output", default="output.jpg", help="Output file.")
 def sobel(**kwargs):
     """ Perform sobel edge detection.
     """
