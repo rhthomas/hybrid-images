@@ -8,7 +8,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def convolution(img, kernel):
     """ This function executes the convolution between `img` and `kernel`.
     """
-    print("[{img}]\tRunning convolution...\n".format(img))
+    print("[{}]\tRunning convolution...\n".format(img))
     # Load the image.
     image = cv2.imread(img)
     # Flip template before convolution.
@@ -62,10 +62,10 @@ def fourier(img, kernel):
     return output
 
 
-def gaussian_blur(image, sigma):
+def gaussian_blur(image, sigma, fourier):
     """ Builds a Gaussian kernel used to perform the LPF on an image.
     """
-    print("[{image}]\tCalculating Gaussian kernel...".format(image))
+    print("[{}]\tCalculating Gaussian kernel...".format(image))
     # Calculate size of filter.
     size = 8 * sigma + 1
     if not size % 2:
@@ -82,36 +82,36 @@ def gaussian_blur(image, sigma):
 
     kernel = kernel / np.sum(kernel)
 
-    if use_f:
+    if fourier:
         return fourier(image, kernel)
     else:
         return convolution(image, kernel)
 
 
-def low_pass(image, cutoff):
+def low_pass(image, cutoff, fourier):
     """ Generate low pass filter of image.
     """
-    return gaussian_blur(image, cutoff)
+    return gaussian_blur(image, cutoff, fourier)
 
 
-def high_pass(image, cutoff):
+def high_pass(image, cutoff, fourier):
     """ Generate high pass filter of image. This is simply the image minus its
     low passed result.
     """
-    return (cv2.imread(image) / 255) - low_pass(image, cutoff)
+    return (cv2.imread(image) / 255) - low_pass(image, cutoff, fourier)
 
 
-def hybrid_image(image, cutoff):
-    """ Create a hybrid image by summing together the low and high freqency
+def hybrid_image(image, cutoff, fourier):
+    """ Create a hybrid image by summing together the low and high frequency
     images.
     """
     # Perform low pass filter and export.
-    print("[{image}\tGenerating low pass image...".format(image[0]))
-    low = low_pass(image[0], cutoff[0])
+    print("[{}]\tGenerating low pass image...".format(image[0]))
+    low = low_pass(image[0], cutoff[0], fourier)
     cv2.imwrite("low.jpg", low * 255)
     # Perform high pass filter and export.
-    print("[{image}]\tGenerating high pass image...".format(image[1]))
-    high = high_pass(image[1], cutoff[1])
+    print("[{}]\tGenerating high pass image...".format(image[1]))
+    high = high_pass(image[1], cutoff[1], fourier)
     cv2.imwrite("high.jpg", (high + 0.5) * 255)
     # Return hybrid image.
     print("Creating hybrid image...")
@@ -179,7 +179,7 @@ def kernel(**kwargs):
 @main.command()
 @click.argument("images", type=str, nargs=2)
 @click.option("-o", "--output", default="output.jpg")
-@click.option("-c", "--cutoff", type=int, nargs=2)
+@click.option("-c", "--cutoff", default=[4, 4], type=int, nargs=2)
 @click.option("-v", "--visual", is_flag=True, default=False)
 @click.option("-f", "--fourier", is_flag=True, default=False)
 def hybrid(**kwargs):
@@ -187,15 +187,15 @@ def hybrid(**kwargs):
     """
 
     if kwargs["fourier"]:
-        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"])
+        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])
     else:
-        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"])[
+        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])[
             4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
             4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
         ]
 
     if kwargs["visual"]:
-        cv2.imwrite(kwargs["visual"], output_vis(hybrid) * 255)
+        cv2.imwrite(kwargs["output"], output_vis(hybrid) * 255)
     else:
         cv2.imwrite(kwargs["output"], hybrid * 255)
 
