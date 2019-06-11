@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
-
 import cv2
 import numpy as np
 import click
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
 
 def convolution(img, kernel):
-    ''' This function executes the convolution between `img` and `kernel`.
-    '''
+    """ This function executes the convolution between `img` and `kernel`.
+    """
     print("[{img}]\tRunning convolution...\n".format(img))
     # Load the image.
     image = cv2.imread(img)
@@ -37,8 +37,8 @@ def convolution(img, kernel):
 
 
 def fourier(img, kernel):
-    ''' Compute convolution between `img` and `kernel` using numpy's FFT.
-    '''
+    """ Compute convolution between `img` and `kernel` using numpy's FFT.
+    """
     # Load the image.
     image = cv2.imread(img)
     # Get size of image and kernel.
@@ -63,8 +63,8 @@ def fourier(img, kernel):
 
 
 def gaussian_blur(image, sigma):
-    ''' Builds a Gaussian kernel used to perform the LPF on an image.
-    '''
+    """ Builds a Gaussian kernel used to perform the LPF on an image.
+    """
     print("[{image}]\tCalculating Gaussian kernel...".format(image))
     # Calculate size of filter.
     size = 8 * sigma + 1
@@ -89,22 +89,22 @@ def gaussian_blur(image, sigma):
 
 
 def low_pass(image, cutoff):
-    ''' Generate low pass filter of image.
-    '''
+    """ Generate low pass filter of image.
+    """
     return gaussian_blur(image, cutoff)
 
 
 def high_pass(image, cutoff):
-    ''' Generate high pass filter of image. This is simply the image minus its
+    """ Generate high pass filter of image. This is simply the image minus its
     low passed result.
-    '''
+    """
     return (cv2.imread(image) / 255) - low_pass(image, cutoff)
 
 
 def hybrid_image(image, cutoff):
-    ''' Create a hybrid image by summing together the low and high freqency
+    """ Create a hybrid image by summing together the low and high freqency
     images.
-    '''
+    """
     # Perform low pass filter and export.
     print("[{image}\tGenerating low pass image...".format(image[0]))
     low = low_pass(image[0], cutoff[0])
@@ -119,9 +119,9 @@ def hybrid_image(image, cutoff):
 
 
 def output_vis(image):
-    ''' Display hybrid image comparison for report. Visualisation shows 5 images
+    """ Display hybrid image comparison for report. Visualisation shows 5 images
     reducing in size to simulate viewing the image from a distance.
-    '''
+    """
     print("Creating visualisation...")
     # Local variables.
     num = 5  # Number of images to display.
@@ -147,64 +147,76 @@ def output_vis(image):
         ] = img
         current_x += img.shape[1] + gap
 
-    # Return the result.
     return stack
 
 
-@click.group()
+@click.group(context_settings=CONTEXT_SETTINGS)
 def main():
+    """ Hybrid image demonstration program.
+    """
     pass
 
 
 @main.command()
-@click.argument('image', type=str, nargs=1)
-@click.option('-o', '--output', default='output.jpg')
-@click.option('-s', '--size', nargs=2, type=int)
-def run_kernel(**kwargs):
-    if any(s % 2 == 0 for s in kwargs['size']):
+@click.argument("image", type=str, nargs=1)
+@click.option("-o", "--output", default="output.jpg")
+@click.option("-s", "--size", nargs=2, type=int)
+def kernel(**kwargs):
+    """ Demonstrate the effect of kernel size.
+    """
+
+    if any(s % 2 == 0 for s in kwargs["size"]):
         print("Kernel dimensions must be odd!")
         exit()
 
-    kernel = np.ones(kwargs['size'], dtype="float") * (255.0 / (kwargs['size'][0] * kwargs['size'][1]))
-    result = convolution(kwargs['image'], kernel)
-    cv2.imwrite(kwargs['output'], result)
+    kernel = np.ones(kwargs["size"], dtype="float") * (
+        255.0 / (kwargs["size"][0] * kwargs["size"][1])
+    )
+    result = convolution(kwargs["image"], kernel)
+    cv2.imwrite(kwargs["output"], result)
 
 
 @main.command()
-@click.argument('images', type=str, nargs=2)
-@click.option('-o', '--output', default='output.jpg')
-@click.option('-c', '--cutoff', type=int, nargs=2)
-@click.option('-v', '--visual', is_flag=True, default=False)
-@click.option('-f', '--fourier', is_flag=True, default=False)
+@click.argument("images", type=str, nargs=2)
+@click.option("-o", "--output", default="output.jpg")
+@click.option("-c", "--cutoff", type=int, nargs=2)
+@click.option("-v", "--visual", is_flag=True, default=False)
+@click.option("-f", "--fourier", is_flag=True, default=False)
 def hybrid(**kwargs):
-    if kwargs['fourier']:
-        hybrid = hybrid_image(kwargs['images'], kwargs['cutoff'])
+    """ Create hybrid image from two source images.
+    """
+
+    if kwargs["fourier"]:
+        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"])
     else:
-        hybrid = hybrid_image(kwargs['images'], kwargs['cutoff'])[
-            4 * max(kwargs['cutoff']) : -4 * max(kwargs['cutoff']), 4 * max(kwargs['cutoff']) : -4 * max(kwargs['cutoff'])
+        hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"])[
+            4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
+            4 * max(kwargs["cutoff"]) : -4 * max(kwargs["cutoff"]),
         ]
 
-    # Save images.
-    if kwargs['visual']:
-        cv2.imwrite(kwargs['visual'], output_vis(hybrid) * 255)
+    if kwargs["visual"]:
+        cv2.imwrite(kwargs["visual"], output_vis(hybrid) * 255)
     else:
-        cv2.imwrite(kwargs['output'], hybrid * 255)
+        cv2.imwrite(kwargs["output"], hybrid * 255)
 
 
 @main.command()
-@click.argument('image', type=str, nargs=1)
-@click.option('-o', '--output', default='output.jpg')
+@click.argument("image", type=str, nargs=1)
+@click.option("-o", "--output", default="output.jpg")
 def sobel(**kwargs):
+    """ Perform sobel edge detection.
+    """
+
     sobel_x = fourier(
-        kwargs['image'], 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+        kwargs["image"], 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
     )
     sobel_y = fourier(
-        kwargs['image'], 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+        kwargs["image"], 255 * np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
     )
 
-    cv2.imwrite(kwargs['output'].split('.')[0] + "_x.jpg", sobel_x)
-    cv2.imwrite(kwargs['output'].split('.')[0] + "_y.jpg", sobel_y)
-    cv2.imwrite(kwargs['output'].split('.')[0] + "_xy.jpg", sobel_x + sobel_y)
+    cv2.imwrite(kwargs["output"].split(".")[0] + "_x.jpg", sobel_x)
+    cv2.imwrite(kwargs["output"].split(".")[0] + "_y.jpg", sobel_y)
+    cv2.imwrite(kwargs["output"].split(".")[0] + "_xy.jpg", sobel_x + sobel_y)
 
 
 if __name__ == "__main__":
