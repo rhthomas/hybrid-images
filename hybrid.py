@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import click
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 def convolution(img, kernel):
@@ -181,9 +181,20 @@ def kernel(**kwargs):
 @main.command()
 @click.argument("images", type=str, nargs=2)
 @click.option("-o", "--output", default="output.jpg", help="Output file.")
-@click.option("-c", "--cutoff", default=[4, 4], type=int, nargs=2, help="High/low cutoff frequencies.")
-@click.option("-v", "--visual", is_flag=True, default=False, help="Generate visualisation.")
-@click.option("-f", "--fourier", is_flag=True, default=False, help="Use fourier convolution.")
+@click.option(
+    "-c",
+    "--cutoff",
+    default=[4, 4],
+    type=int,
+    nargs=2,
+    help="High/low cutoff frequencies.",
+)
+@click.option(
+    "-v", "--visual", is_flag=True, default=False, help="Generate visualisation."
+)
+@click.option(
+    "-f", "--fourier", is_flag=True, default=False, help="Use fourier convolution."
+)
 def hybrid(**kwargs):
     """ Create hybrid image from two source images.
     """
