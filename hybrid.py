@@ -66,6 +66,7 @@ def gaussian_blur(image, sigma, fourier):
     """ Builds a Gaussian kernel used to perform the LPF on an image.
     """
     print("[{}]\tCalculating Gaussian kernel...".format(image))
+
     # Calculate size of filter.
     size = 8 * sigma + 1
     if not size % 2:
@@ -91,6 +92,7 @@ def gaussian_blur(image, sigma, fourier):
 def low_pass(image, cutoff, fourier):
     """ Generate low pass filter of image.
     """
+    print("[{}]\tGenerating low pass image...".format(image))
     return gaussian_blur(image, cutoff, fourier)
 
 
@@ -98,6 +100,7 @@ def high_pass(image, cutoff, fourier):
     """ Generate high pass filter of image. This is simply the image minus its
     low passed result.
     """
+    print("[{}]\tGenerating high pass image...".format(image))
     return (cv2.imread(image) / 255) - low_pass(image, cutoff, fourier)
 
 
@@ -106,14 +109,12 @@ def hybrid_image(image, cutoff, fourier):
     images.
     """
     # Perform low pass filter and export.
-    print("[{}]\tGenerating low pass image...".format(image[0]))
     low = low_pass(image[0], cutoff[0], fourier)
     cv2.imwrite("low.jpg", low * 255)
     # Perform high pass filter and export.
-    print("[{}]\tGenerating high pass image...".format(image[1]))
     high = high_pass(image[1], cutoff[1], fourier)
     cv2.imwrite("high.jpg", (high + 0.5) * 255)
-    # Return hybrid image.
+
     print("Creating hybrid image...")
     return low + high
 
@@ -123,7 +124,7 @@ def output_vis(image):
     reducing in size to simulate viewing the image from a distance.
     """
     print("Creating visualisation...")
-    # Local variables.
+
     num = 5  # Number of images to display.
     gap = 2  # Gap between images (px).
 
@@ -131,6 +132,7 @@ def output_vis(image):
     image_list = [image]
     max_height = image.shape[0]
     max_width = image.shape[1]
+
     # Add images to list and increase max width.
     for i in range(1, num):
         tmp = cv2.resize(image, (0, 0), fx=0.5 ** i, fy=0.5 ** i)
@@ -139,6 +141,7 @@ def output_vis(image):
 
     # Create space for image stack.
     stack = np.ones((max_height, max_width, 3)) * 255
+
     # Add images to stack.
     current_x = 0
     for img in image_list:
@@ -164,7 +167,6 @@ def main():
 def kernel(**kwargs):
     """ Demonstrate the effect of kernel size.
     """
-
     if any(s % 2 == 0 for s in kwargs["size"]):
         print("Kernel dimensions must be odd!")
         exit()
@@ -185,7 +187,6 @@ def kernel(**kwargs):
 def hybrid(**kwargs):
     """ Create hybrid image from two source images.
     """
-
     hybrid = hybrid_image(kwargs["images"], kwargs["cutoff"], kwargs["fourier"])
 
     if kwargs["visual"]:
@@ -200,7 +201,6 @@ def hybrid(**kwargs):
 def sobel(**kwargs):
     """ Perform sobel edge detection.
     """
-
     sobel_x = fourier(
         kwargs["image"], 255 * np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
     )
