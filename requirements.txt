@@ -1,3 +1,3 @@
-opencv_python==4.0.1.24
+opencv_python==4.2.0.32
 numpy==1.16.2
 click==6.7
